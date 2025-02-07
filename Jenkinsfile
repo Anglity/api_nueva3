@@ -30,7 +30,7 @@ pipeline {
         }
         stage('Deploy to Server') {
             steps {
-                sshagent(credentials: ['ssh-server-credentials']) {
+                sshagent(credentials: ['Angel2610']) {
                     sh """
                     ssh $SERVER_USER@$SERVER_IP <<EOF
                     docker pull $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
