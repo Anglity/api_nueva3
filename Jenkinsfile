@@ -1,72 +1,46 @@
 pipeline {
     agent any
-
     environment {
-        DOCKER_IMAGE = "angelalvarez0210/api_nueva"
+        DOCKER_REGISTRY = "167.71.164.51:8082"
+        DOCKER_IMAGE = "api_nueva3"
         DOCKER_TAG = "latest"
-        NEXUS_REPO = "http://209.97.159.2:8081/repository/docker-repo/"
-        SERVER_IP = "209.97.159.2"
-        SSH_KEY = credentials('ssh-key-id')
+        SERVER_USER = "root"
+        SERVER_IP = "167.71.164.51"
     }
-
-    options {
-        disableConcurrentBuilds() // Evita conflictos entre builds concurrentes
-    }
-
     stages {
         stage('Checkout') {
             steps {
-                git branch: "${env.BRANCH_NAME}", credentialsId: 'github-credentials', url: "https://github.com/Anglity/api_nueva3.git"
+                git branch: 'develop', url: 'https://github.com/Anglity/api_nueva3.git'
             }
         }
-
         stage('Build Docker Image') {
-            when {
-                not { branch 'main' } // Evita construir imágenes en main directamente
-            }
             steps {
-                sh """
-                docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
-                """
+                sh "docker build -t $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG ."
             }
         }
-
+        stage('Login to Nexus') {
+            steps {
+                sh "echo 'Angel2610' | docker login -u admin --password-stdin http://$DOCKER_REGISTRY"
+            }
+        }
         stage('Push to Nexus') {
-            when {
-                not { branch 'main' } // Evita subir imágenes desde la rama main directamente
-            }
             steps {
-                sh """
-                docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${NEXUS_REPO}/${DOCKER_IMAGE}:${DOCKER_TAG}
-                docker push ${NEXUS_REPO}/${DOCKER_IMAGE}:${DOCKER_TAG}
-                """
+                sh "docker push $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG"
             }
         }
-
         stage('Deploy to Server') {
-            when {
-                branch 'main' // Despliega solo cuando el cambio está en main
-            }
             steps {
-                sshagent(['ssh-key-id']) {
+                sshagent(credentials: ['ssh-server-credentials']) {
                     sh """
-                    ssh root@${SERVER_IP} <<EOF
-                    docker pull ${NEXUS_REPO}/${DOCKER_IMAGE}:${DOCKER_TAG}
-                    docker stop api_nueva || true
-                    docker run -d -p 8080:8080 --name api_nueva ${NEXUS_REPO}/${DOCKER_IMAGE}:${DOCKER_TAG}
+                    ssh $SERVER_USER@$SERVER_IP <<EOF
+                    docker pull $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
+                    docker stop $DOCKER_IMAGE || true
+                    docker rm $DOCKER_IMAGE || true
+                    docker run -d -p 8080:8080 --name $DOCKER_IMAGE $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
                     EOF
                     """
                 }
             }
-        }
-    }
-
-    post {
-        success {
-            echo "✅ Despliegue exitoso en la rama main!"
-        }
-        failure {
-            echo "❌ Error en el despliegue"
         }
     }
 }
