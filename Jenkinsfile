@@ -39,7 +39,7 @@ pipeline {
                         name: 'targetServer',
                         host: SERVER_IP,
                         user: SERVER_USER,
-                       identityFile: '/var/jenkins_home/.ssh/id_rsa'
+                       identityFile: '/var/jenkins_home/.ssh/id_rsa',
                         allowAnyHosts: true
                     ]
                     sshCommand remote: remote, command: """
