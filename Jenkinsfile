@@ -29,18 +29,18 @@ pipeline {
             }
         }
         stage('Deploy to Server') {
-            steps {
-                sshagent(credentials: ['ssh-server-credentials']) {
-                    sh """
-                    ssh $SERVER_USER@$SERVER_IP <<EOF
-                    docker pull $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
-                    docker stop $DOCKER_IMAGE || true
-                    docker rm $DOCKER_IMAGE || true
-                    docker run -d -p 8080:8080 --name $DOCKER_IMAGE $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
-                    EOF
-                    """
-                }
-            }
+    steps {
+        sshagent(credentials: ['ssh-server-credentials']) {
+            sh """
+            ssh -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP <<EOF
+            docker pull $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
+            docker stop $DOCKER_IMAGE || true
+            docker rm $DOCKER_IMAGE || true
+            docker run -d -p 8000:8000 --name $DOCKER_IMAGE $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
+            EOF
+            """
         }
+    }
+}
     }
 }
