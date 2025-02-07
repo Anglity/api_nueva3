@@ -32,30 +32,20 @@ pipeline {
                 sh "docker push $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG"
             }
         }
-        stage('Deploy to Server') {
-            steps {
-                sshagent(credentials: ['ssh-server-credentials']) {
-                    sh """
-                    echo "Deploying to server..."
-                    ssh -i /var/jenkins_home/.ssh/angel root@167.71.164.51 << 'EOF'
-                    set -e  # Habilitar salida en caso de error
-                    echo "Pulling latest Docker image..."
-                    docker pull $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
-                    
-                    echo "Stopping and removing existing container..."
-                    docker stop $DOCKER_IMAGE || true
-                    docker rm $DOCKER_IMAGE || true
-                    
-                    echo "Releasing port 8000 if occupied..."
-                    fuser -k 8000/tcp || true
-                    
-                    echo "Running new container..."
-                    docker run -d -p 8000:8000 --name $DOCKER_IMAGE $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
-                    echo "Deployment successful!"
-                    EOF
-                    """
-                }
-            }
+       stage('Deploy to Server') {
+    steps {
+        sshagent(credentials: ['ssh-server-credentials']) {
+            sh '''
+            ssh -T root@167.71.164.51 <<EOF
+            docker pull $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
+            docker stop $DOCKER_IMAGE || true
+            docker rm $DOCKER_IMAGE || true
+            docker run -d -p 8000:8000 --name $DOCKER_IMAGE $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
+            EOF
+            '''
         }
+    }
+}
+
     }
 }
