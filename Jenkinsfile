@@ -2,7 +2,7 @@ pipeline {
     agent any
     environment {
         DOCKER_REGISTRY = "167.71.164.51:8082"
-        DOCKER_IMAGE = "api_nueva"
+        DOCKER_IMAGE = "api_nueva3"
         DOCKER_TAG = "latest"
         SERVER_USER = "root"
         SERVER_IP = "167.71.164.51"
@@ -32,21 +32,24 @@ pipeline {
                 sh "docker push $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG"
             }
         }
-       stage('Deploy to Server') {
-    steps {
-        sshagent(credentials: ['ssh-server-credentials']) {
-            sh '''
-            ssh -T root@167.71.164.51 <<- 'EOF'
-                docker pull $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
-                docker stop $DOCKER_IMAGE || true
-                docker rm $DOCKER_IMAGE || true
-                docker run -d -p 8080:8080 --name $DOCKER_IMAGE $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
-            EOF
-            '''
+        stage('Deploy to Server') {
+            steps {
+                script {
+                    def remote = [
+                        name: 'targetServer',
+                        host: SERVER_IP,
+                        user: SERVER_USER,
+                       identityFile: '/var/jenkins_home/.ssh/id_rsa'
+                        allowAnyHosts: true
+                    ]
+                    sshCommand remote: remote, command: """
+                        docker pull $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
+                        docker stop $DOCKER_IMAGE || true
+                        docker rm $DOCKER_IMAGE || true
+                        docker run -d -p 8080:8080 --name $DOCKER_IMAGE $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
+                    """
+                }
+            }
         }
-    }
-  }
-
-
     }
 }
