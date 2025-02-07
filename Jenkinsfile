@@ -28,11 +28,11 @@ pipeline {
                 sh "docker push $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG"
             }
         }
-        stage('Deploy to Server') {
+       stage('Deploy to Server') {
     steps {
         sshagent(credentials: ['ssh-server-credentials']) {
             sh """
-            ssh -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP <<EOF
+            ssh -o StrictHostKeyChecking=no root@167.71.164.51 <<EOF
             docker pull $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
             docker stop $DOCKER_IMAGE || true
             docker rm $DOCKER_IMAGE || true
@@ -42,5 +42,6 @@ pipeline {
         }
     }
 }
+
     }
 }
