@@ -13,7 +13,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo "📥 Clonando código fuente desde GitHub..."
-                git branch: 'develop', url: 'https://github.com/Anglity/api_nueva3.git'
+                git branch: 'develop', url: 'https://github.com/Anglity/api_nueva.git'
             }
         }
         stage('Build Docker Image') {
@@ -44,8 +44,8 @@ pipeline {
                         echo "📥 Pulling la última imagen de Docker..."
                         docker pull $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
 
-                        echo "🔍 Verificando si el contenedor con la imagen antigua está en ejecución..."
-                        OLD_CONTAINER_ID=\$(docker ps --filter "ancestor=$OLD_IMAGE_NAME" --format "{{.ID}}")
+                        echo "🔍 Verificando si existe un contenedor con la imagen antigua..."
+                        OLD_CONTAINER_ID=\$(docker ps -q --filter "ancestor=$OLD_IMAGE_NAME")
 
                         if [ -n "\$OLD_CONTAINER_ID" ]; then
                             echo "🛑 Deteniendo el contenedor con la imagen antigua..."
@@ -53,10 +53,22 @@ pipeline {
                             echo "🗑️ Eliminando el contenedor con la imagen antigua..."
                             docker rm \$OLD_CONTAINER_ID || true
                         else
-                            echo "✅ No se encontró ningún contenedor con la imagen antigua."
+                            echo "✅ No se encontró ningún contenedor en ejecución con la imagen antigua."
                         fi
 
-                        echo "🏃‍♂️ Iniciando nuevo contenedor..."
+                        echo "🔍 Verificando si hay un contenedor existente con el nombre $DOCKER_IMAGE..."
+                        EXISTING_CONTAINER=\$(docker ps -aq -f name=$DOCKER_IMAGE)
+
+                        if [ -n "\$EXISTING_CONTAINER" ]; then
+                            echo "🛑 Deteniendo el contenedor existente..."
+                            docker stop \$EXISTING_CONTAINER || true
+                            echo "🗑️ Eliminando el contenedor existente..."
+                            docker rm \$EXISTING_CONTAINER || true
+                        else
+                            echo "✅ No se encontró ningún contenedor con el nombre $DOCKER_IMAGE."
+                        fi
+
+                        echo "🏃‍♂️ Iniciando un nuevo contenedor..."
                         docker run -d --restart unless-stopped --name $DOCKER_IMAGE -p 8080:8080 $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
 
                         echo "✅ Despliegue completado exitosamente!"
