@@ -6,41 +6,67 @@ pipeline {
         DOCKER_TAG = "latest"
         SERVER_USER = "root"
         SERVER_IP = "167.71.164.51"
+        SSH_PASSPHRASE = "Angel2610" // Passphrase de la clave privada
     }
     stages {
         stage('Checkout') {
             steps {
+                echo "📥 Clonando código fuente desde GitHub..."
                 git branch: 'develop', url: 'https://github.com/Anglity/api_nueva3.git'
             }
         }
         stage('Build Docker Image') {
             steps {
+                echo "🔨 Construyendo imagen Docker..."
                 sh "docker build -t $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG ."
             }
         }
         stage('Login to Nexus') {
             steps {
-                sh "echo 'Angel2610' | docker login -u admin --password-stdin http://$DOCKER_REGISTRY"
+                echo "🔑 Iniciando sesión en Nexus..."
+                sh "echo '$SSH_PASSPHRASE' | docker login -u admin --password-stdin http://$DOCKER_REGISTRY"
             }
         }
         stage('Push to Nexus') {
             steps {
+                echo "📤 Subiendo imagen a Nexus..."
                 sh "docker push $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG"
             }
         }
         stage('Deploy to Server') {
             steps {
-                sshagent(credentials: ['ssh-server-credentials']) {
-                    sh """
-                    ssh $SERVER_USER@$SERVER_IP <<EOF
-                    docker pull $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
-                    docker stop $DOCKER_IMAGE || true
-                    docker rm $DOCKER_IMAGE || true
-                    docker run -d -p 8080:8080 --name $DOCKER_IMAGE $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
-                    EOF
-                    """
+                echo "🚀 Desplegando aplicación en el servidor..."
+                script {
+                    sshagent(credentials: ['ssh-server-credentials']) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no -i /var/jenkins_home/.ssh/id_rsa $SERVER_USER@$SERVER_IP << 'ENDSSH'
+                        echo "📥 Pulling la última imagen de Docker..."
+                        docker pull $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
+
+                        echo "🛑 Deteniendo el contenedor existente (si existe)..."
+                        docker stop $DOCKER_IMAGE || true
+
+                        echo "🗑️ Eliminando contenedor antiguo (si existe)..."
+                        docker rm $DOCKER_IMAGE || true
+
+                        echo "🏃‍♂️ Iniciando nuevo contenedor..."
+                        docker run -d --restart unless-stopped --name $DOCKER_IMAGE -p 8000:8000 $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
+
+                        echo "✅ Despliegue completado exitosamente!"
+                        exit
+                        ENDSSH
+                        """
+                    }
                 }
             }
+        }
+    }
+    post {
+        success {
+            echo "🎉 Pipeline completado exitosamente!"
+        }
+        failure {
+            echo "🚨 ERROR: Algo falló en el pipeline, revisa los logs!"
         }
     }
 }
