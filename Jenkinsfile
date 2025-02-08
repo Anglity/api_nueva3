@@ -2,7 +2,7 @@ pipeline {
     agent any
     environment {
         DOCKER_REGISTRY = "167.71.164.51:8082"
-        DOCKER_IMAGE = "api_nueva3"
+        DOCKER_IMAGE = "api_nueva"
         DOCKER_TAG = "latest"
         SERVER_USER = "root"
         SERVER_IP = "167.71.164.51"
