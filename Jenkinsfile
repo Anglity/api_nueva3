@@ -12,7 +12,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo "📥 Clonando código fuente desde GitHub..."
-                git branch: 'develop', url: 'https://github.com/Anglity/api_nueva3.git'
+                git branch: 'develop', credentialsId: 'github-credentials', url: 'https://github.com/Anglity/api_nueva3.git'
             }
         }
         stage('Build Docker Image') {
@@ -40,14 +40,25 @@ pipeline {
                     sshagent(credentials: ['ssh-server-credentials']) {
                         sh """
                         ssh -o StrictHostKeyChecking=no -i /var/jenkins_home/.ssh/id_rsa $SERVER_USER@$SERVER_IP << 'ENDSSH'
-                        echo "📥 Pulling la última imagen de Docker..."
+                        
+                        echo "📥 Descargando la última imagen de Docker..."
                         docker pull $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
 
-                        echo "🛑 Deteniendo el contenedor existente (si existe)..."
-                        docker stop $DOCKER_IMAGE || true
+                        echo "🔍 Verificando si el contenedor $DOCKER_IMAGE está en ejecución..."
+                        if [ \$(docker ps -q -f name=$DOCKER_IMAGE) ]; then
+                            echo "🛑 Deteniendo el contenedor en ejecución..."
+                            docker stop $DOCKER_IMAGE
+                        fi
 
                         echo "🗑️ Eliminando contenedor antiguo (si existe)..."
-                        docker rm $DOCKER_IMAGE || true
+                        docker rm -f $DOCKER_IMAGE || true
+
+                        echo "🔍 Verificando si el puerto 8080 está en uso..."
+                        if lsof -i :8080 | grep LISTEN; then
+                            echo "⚠️ El puerto 8080 está en uso. Liberándolo..."
+                            fuser -k 8080/tcp
+                            sleep 3
+                        fi
 
                         echo "🏃‍♂️ Iniciando nuevo contenedor..."
                         docker run -d --restart unless-stopped --name $DOCKER_IMAGE -p 8080:8080 $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
