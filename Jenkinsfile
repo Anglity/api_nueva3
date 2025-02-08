@@ -2,11 +2,12 @@ pipeline {
     agent any
     environment {
         DOCKER_REGISTRY = "167.71.164.51:8082"
-        DOCKER_IMAGE = "api_nueva"
+        DOCKER_IMAGE = "api_nueva3"
         DOCKER_TAG = "latest"
         SERVER_USER = "root"
         SERVER_IP = "167.71.164.51"
         SSH_PASSPHRASE = "Angel2610" // Passphrase de la clave privada
+        OLD_IMAGE_NAME = "angelalvarez0210/actix_backend-api_nueva:latest" // Imagen a detener
     }
     stages {
         stage('Checkout') {
@@ -43,11 +44,17 @@ pipeline {
                         echo "📥 Pulling la última imagen de Docker..."
                         docker pull $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
 
-                        echo "🛑 Deteniendo el contenedor existente (si existe)..."
-                        docker stop $DOCKER_IMAGE || true
+                        echo "🔍 Verificando si el contenedor con la imagen antigua está en ejecución..."
+                        OLD_CONTAINER_ID=\$(docker ps --filter "ancestor=$OLD_IMAGE_NAME" --format "{{.ID}}")
 
-                        echo "🗑️ Eliminando contenedor antiguo (si existe)..."
-                        docker rm $DOCKER_IMAGE || true
+                        if [ -n "\$OLD_CONTAINER_ID" ]; then
+                            echo "🛑 Deteniendo el contenedor con la imagen antigua..."
+                            docker stop \$OLD_CONTAINER_ID || true
+                            echo "🗑️ Eliminando el contenedor con la imagen antigua..."
+                            docker rm \$OLD_CONTAINER_ID || true
+                        else
+                            echo "✅ No se encontró ningún contenedor con la imagen antigua."
+                        fi
 
                         echo "🏃‍♂️ Iniciando nuevo contenedor..."
                         docker run -d --restart unless-stopped --name $DOCKER_IMAGE -p 8080:8080 $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
