@@ -6,6 +6,8 @@ pipeline {
         DOCKER_TAG = "latest"
         SERVER_USER = "root"
         SERVER_IP = "167.71.164.51"
+        SSH_KEY_PATH = "/var/jenkins_home/.ssh/id_rsa"
+        SSH_PASSPHRASE = "angelalvarez" // Passphrase de la clave privada
     }
     stages {
         stage('Checkout') {
@@ -35,19 +37,24 @@ pipeline {
         stage('Deploy to Server') {
             steps {
                 script {
-                    def remote = [
-                        name: 'targetServer',
-                        host: SERVER_IP,
-                        user: SERVER_USER,
-                       identityFile: '/var/jenkins_home/.ssh/id_rsa',
-                        allowAnyHosts: true
-                    ]
-                    sshCommand remote: remote, command: """
-                        docker pull $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
-                        docker stop $DOCKER_IMAGE || true
-                        docker rm $DOCKER_IMAGE || true
-                        docker run -d -p 8080:8080 --name $DOCKER_IMAGE $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
-                    """
+                    echo "Deploying application to server..."
+                    sh '''
+                    expect <<EOF
+                    spawn ssh -o StrictHostKeyChecking=no -i $SSH_KEY_PATH $SERVER_USER@$SERVER_IP
+                    expect "Enter passphrase for key"
+                    send "$SSH_PASSPHRASE\r"
+                    expect "$ "
+                    send "docker pull $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG\r"
+                    expect "$ "
+                    send "docker stop $DOCKER_IMAGE || true\r"
+                    expect "$ "
+                    send "docker rm $DOCKER_IMAGE || true\r"
+                    expect "$ "
+                    send "docker run -d -p 8080:8080 --name $DOCKER_IMAGE $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG\r"
+                    expect "$ "
+                    send "exit\r"
+                    EOF
+                    '''
                 }
             }
         }
