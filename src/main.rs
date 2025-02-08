@@ -7,7 +7,7 @@ use std::collections::HashMap; // Importar HashMap
 
 
 const FIREBASE_URL: &str = "https://appparalelo-13c98-default-rtdb.firebaseio.com/"; // Reemplaza con tu URL Firebase
-const API_VIEJA_URL: &str = "http://209.97.159.2:8000/api/pedidos"; // API vieja
+const API_VIEJA_URL: &str = "http://167.71.164.51:8000/api/pedidos"; // API vieja
 
 // Estructura del pedido
 #[derive(Serialize, Deserialize, Debug, Clone)]
