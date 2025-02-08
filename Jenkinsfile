@@ -2,7 +2,7 @@ pipeline {
     agent any
     environment {
         DOCKER_REGISTRY = "167.71.164.51:8082"
-        DOCKER_IMAGE = "api_nueva3"
+        DOCKER_IMAGE = "api_nueva"
         DOCKER_TAG = "latest"
         SERVER_USER = "root"
         SERVER_IP = "167.71.164.51"
@@ -50,7 +50,7 @@ pipeline {
                         docker rm $DOCKER_IMAGE || true
 
                         echo "🏃‍♂️ Iniciando nuevo contenedor..."
-                        docker run -d --restart unless-stopped --name $DOCKER_IMAGE -p 8000:8000 $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
+                        docker run -d --restart unless-stopped --name $DOCKER_IMAGE -p 8080:8080 $DOCKER_REGISTRY/$DOCKER_IMAGE:$DOCKER_TAG
 
                         echo "✅ Despliegue completado exitosamente!"
                         exit
